@@ -8,7 +8,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Missing Square env vars" });
   }
 
-  const url = `https://connect.squareupsandbox.com/oauth2/authorize?client_id=${clientId}&scope=ITEMS_READ+ITEMS_WRITE+ORDERS_READ+ORDERS_WRITE+PAYMENTS_READ+PAYMENTS_WRITE&session=false&redirect_uri=${redirectUrl}`;
+  // Use PRODUCTION Square OAuth URL (not sandbox)
+  const url = `https://connect.squareup.com/oauth2/authorize?client_id=${clientId}&scope=ITEMS_READ+ITEMS_WRITE+ORDERS_READ+ORDERS_WRITE+PAYMENTS_READ+PAYMENTS_WRITE&session=false&redirect_uri=${encodeURIComponent(
+    redirectUrl
+  )}`;
 
   return res.redirect(url);
 }
