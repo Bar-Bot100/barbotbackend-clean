@@ -1,54 +1,47 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { code } = req.query;
+  const code = req.query.code as string;
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ error: "Missing code from Square" });
+  if (!code) {
+    return res.status(400).json({ error: "Missing code parameter" });
   }
 
-  const clientId = process.env.SQUARE_CLIENT_ID;
-  const clientSecret = process.env.SQUARE_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
+  if (!process.env.SQUARE_CLIENT_ID || !process.env.SQUARE_CLIENT_SECRET || !process.env.SQUARE_REDIRECT_URL) {
     return res.status(500).json({ error: "Missing Square client credentials" });
   }
 
   try {
-    // Call Square OAuth token endpoint (PRODUCTION)
-    const response = await fetch("https://connect.squareup.com/oauth2/token", {
+    const tokenRes = await fetch("https://connect.squareup.com/oauth2/token", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: process.env.SQUARE_CLIENT_ID,
+        client_secret: process.env.SQUARE_CLIENT_SECRET,
         code,
+        redirect_uri: process.env.SQUARE_REDIRECT_URL, // <-- THIS FIXES THE ERROR
         grant_type: "authorization_code"
       })
     });
 
-    const data = await response.json();
+    const data = await tokenRes.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({
+    if (!tokenRes.ok) {
+      return res.status(500).json({
         error: "Failed to exchange code for token",
         details: data
       });
     }
 
-    // ⚠️ access_token is VERY sensitive – don’t log it in a real app.
-    // For now we return it so you can see it works.
     return res.status(200).json({
-      message: "Square OAuth token obtained",
-      merchant_id: data.merchant_id,
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_at: data.expires_at
+      message: "Square OAuth successful",
+      tokens: data
     });
+
   } catch (err: any) {
-    console.error(err);
-    return res.status(500).json({ error: "Unexpected error", details: err?.message });
+    return res.status(500).json({ error: "Unexpected server error", detail: err.message });
   }
 }
