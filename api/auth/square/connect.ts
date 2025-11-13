@@ -1,31 +1,40 @@
+// api/auth/square/connect.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const SQUARE_OAUTH_AUTHORIZE_URL =
-  'https://connect.squareup.com/oauth2/authorize';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const clientId = process.env.SQUARE_CLIENT_ID;
+  const redirectUrl = process.env.SQUARE_REDIRECT_URL;
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  const { SQUARE_CLIENT_ID, SQUARE_REDIRECT_URL } = process.env;
-
-  if (!SQUARE_CLIENT_ID || !SQUARE_REDIRECT_URL) {
-    return res
-      .status(500)
-      .json({ error: 'Missing Square env vars' });
+  if (!clientId || !redirectUrl) {
+    return res.status(500).json({
+      error: 'Missing Square env vars',
+      details: {
+        SQUARE_CLIENT_ID: !!clientId,
+        SQUARE_REDIRECT_URL: !!redirectUrl,
+      },
+    });
   }
 
-  // ✅ scopes we request from Square
+  // 👇 IMPORTANT: include MERCHANT_PROFILE_READ here
   const scopes = [
-    'MERCHANT_PROFILE_READ', // <-- new one!
     'ITEMS_READ',
     'ITEMS_WRITE',
     'ORDERS_READ',
     'ORDERS_WRITE',
     'PAYMENTS_READ',
     'PAYMENTS_WRITE',
-  ].join('+');
+    'MERCHANT_PROFILE_READ',
+  ];
 
-  const redirectUrl = `${SQUARE_OAUTH_AUTHORIZE_URL}?client_id=${SQUARE_CLIENT_ID}&scope=${scopes}&session=false&state=barbot-oauth&redirect_uri=${encodeURIComponent(
-    SQUARE_REDIRECT_URL,
-  )}`;
+  const state = Math.random().toString(36).slice(2);
 
-  return res.redirect(redirectUrl);
+  const url = new URL('https://connect.squareup.com/oauth2/authorize');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('scope', scopes.join(' ')); // space-separated, will show up as + in the URL
+  url.searchParams.set('session', 'false');
+  url.searchParams.set('state', state);
+  url.searchParams.set('redirect_uri', redirectUrl);
+
+  // Redirect the browser to Square’s OAuth screen
+  res.redirect(url.toString());
 }
