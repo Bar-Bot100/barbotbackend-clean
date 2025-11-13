@@ -2,6 +2,7 @@
   "name": "barbotbackend-clean",
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/node": "latest"
+    "@vercel/node": "latest",
+    "@supabase/supabase-js": "^2.48.0"
   }
 }
